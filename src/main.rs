@@ -12,8 +12,8 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, bail};
 use serde_json::{Value, json};
 
-const PLUGIN_ID: &str = "trolz.context";
-const USAGE: &str = "usage: herdr-context <view | toggle | edit | render FILE [WIDTH]>";
+const PLUGIN_ID: &str = "trolz.wherewasi";
+const USAGE: &str = "usage: wherewasi <view | toggle | edit | render FILE [WIDTH]>";
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -149,7 +149,7 @@ fn rightmost_pane(pane_id: &str) -> Option<String> {
 
 /// Popup entrypoint: open the context file in the user's editor.
 fn edit() -> Result<()> {
-    let file = std::env::var_os("HERDR_CONTEXT_FILE").context("HERDR_CONTEXT_FILE is not set")?;
+    let file = std::env::var_os("WHEREWASI_FILE").context("WHEREWASI_FILE is not set")?;
     let status = app::editor_command(&PathBuf::from(file)).status()?;
     if !status.success() {
         bail!("editor exited with {status}");

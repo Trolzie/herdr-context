@@ -1,8 +1,8 @@
-id = "trolz.context"
-name = "Context sidebar"
+id = "trolz.wherewasi"
+name = "Where was I"
 version = "0.1.0"
 min_herdr_version = "0.9.3"
-description = "A live, rendered Markdown context file for the repo you are working in, docked on the right"
+description = "Keeps your plan, progress and what just happened in view beside your agents, so switching context is instant"
 platforms = ["linux", "macos"]
 
 [[build]]
@@ -10,20 +10,20 @@ command = ["cargo", "build", "--release"]
 
 [[actions]]
 id = "toggle"
-title = "Toggle context sidebar"
+title = "Toggle where-was-I sidebar"
 contexts = ["workspace"]
-command = ["target/release/herdr-context", "toggle"]
+command = ["target/release/wherewasi", "toggle"]
 
 [[panes]]
 id = "sidebar"
-title = "context"
+title = "where was i"
 placement = "split"
-command = ["target/release/herdr-context", "view"]
+command = ["target/release/wherewasi", "view"]
 
 [[panes]]
 id = "editor"
-title = "edit context"
+title = "edit context file"
 placement = "popup"
 width = "90%"
 height = "90%"
-command = ["target/release/herdr-context", "edit"]
+command = ["target/release/wherewasi", "edit"]

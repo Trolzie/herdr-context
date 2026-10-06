@@ -23,7 +23,7 @@ pub fn socket_path() -> PathBuf {
 pub fn request(method: &str, params: Value) -> Result<Value> {
     let mut stream = UnixStream::connect(socket_path()).context("connect to herdr socket")?;
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
-    let body = json!({ "id": "herdr-context", "method": method, "params": params });
+    let body = json!({ "id": "wherewasi", "method": method, "params": params });
     writeln!(stream, "{body}")?;
     let mut line = String::new();
     BufReader::new(stream).read_line(&mut line)?;
@@ -104,7 +104,7 @@ fn stream_focus(tx: &Sender<FocusEvent>) -> Result<()> {
     .map(|kind| json!({ "type": kind }))
     .collect();
     let body = json!({
-        "id": "herdr-context-sub",
+        "id": "wherewasi-sub",
         "method": "events.subscribe",
         "params": { "subscriptions": subscriptions },
     });

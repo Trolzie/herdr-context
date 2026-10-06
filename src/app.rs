@@ -456,7 +456,7 @@ impl App {
                     "width": "90%",
                     "height": "90%",
                     "cwd": root,
-                    "env": { "HERDR_CONTEXT_FILE": file },
+                    "env": { "WHEREWASI_FILE": file },
                 }),
             );
             match opened {

@@ -45,10 +45,10 @@ impl Target {
     }
 }
 
-/// Optional folder of per-repo notes: `HERDR_CONTEXT_NOTES_DIR`, or
+/// Optional folder of per-repo notes: `WHEREWASI_NOTES_DIR`, or
 /// `notes_dir = "..."` in the plugin's `config.toml`.
 fn notes_dir() -> Option<PathBuf> {
-    if let Some(dir) = std::env::var_os("HERDR_CONTEXT_NOTES_DIR") {
+    if let Some(dir) = std::env::var_os("WHEREWASI_NOTES_DIR") {
         return Some(PathBuf::from(dir));
     }
     let config = std::env::var_os("HERDR_PLUGIN_CONFIG_DIR")?;

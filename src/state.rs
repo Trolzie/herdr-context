@@ -7,7 +7,7 @@ fn dir() -> Option<PathBuf> {
     let base = std::env::var_os("HERDR_PLUGIN_STATE_DIR")
         .map(PathBuf::from)
         .or_else(|| {
-            std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/state/herdr-context"))
+            std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/state/wherewasi"))
         })?;
     Some(base.join("sidebars"))
 }

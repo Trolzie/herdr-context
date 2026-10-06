@@ -1,9 +1,13 @@
 [package]
-name = "herdr-context"
+name = "herdr-wherewasi"
 version = "0.1.0"
 edition = "2024"
-description = "A herdr plugin that shows a live, rendered Markdown context file beside your agents"
+description = "Where was I? A herdr plugin that keeps your plan and progress in view, so switching context is instant"
 license = "MIT"
+
+[[bin]]
+name = "wherewasi"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.104"

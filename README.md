@@ -1,6 +1,6 @@
-# herdr-context
+# wherewasi
 
-A [Herdr](https://herdr.dev) plugin that docks a live, rendered Markdown file on the right of your tab, so the context of what you are working on stays in view next to your agents.
+*Where was I?* A [Herdr](https://herdr.dev) plugin that docks a live, rendered Markdown file on the right of your tab: the plan, what was just done, and what's next. Jump between tabs, repos and worktrees and the answer is already on screen.
 
 ```text
  prime · fix/login-redirect                ● working
@@ -38,7 +38,7 @@ A [Herdr](https://herdr.dev) plugin that docks a live, rendered Markdown file on
 Requires Herdr 0.9.3 or newer and a Rust toolchain (`cargo`).
 
 ```bash
-herdr plugin install Trolzie/herdr-context
+herdr plugin install Trolzie/herdr-wherewasi
 ```
 
 Bind the toggle to a key in `~/.config/herdr/config.toml`:
@@ -47,11 +47,11 @@ Bind the toggle to a key in `~/.config/herdr/config.toml`:
 [[keys.command]]
 key = "prefix+m"
 type = "plugin_action"
-command = "trolz.context.toggle"
-description = "toggle context sidebar"
+command = "trolz.wherewasi.toggle"
+description = "toggle wherewasi sidebar"
 ```
 
-Then run `herdr server reload-config`. Without a binding, use `herdr plugin action invoke trolz.context.toggle`.
+Then run `herdr server reload-config`. Without a binding, use `herdr plugin action invoke trolz.wherewasi.toggle`.
 
 ## Which file is shown
 
@@ -63,13 +63,13 @@ For the focused pane's directory, the first file that exists wins:
 
 The repo name comes from the `origin` remote, so Herdr's generated worktree names do not change it.
 
-To keep notes outside your repos, set a notes folder in the plugin's config file. `herdr plugin config-dir trolz.context` prints its folder; create `config.toml` there:
+To keep notes outside your repos, set a notes folder in the plugin's config file. `herdr plugin config-dir trolz.wherewasi` prints its folder; create `config.toml` there:
 
 ```toml
 notes_dir = "~/notes"
 ```
 
-The `HERDR_CONTEXT_NOTES_DIR` environment variable overrides it.
+The `WHEREWASI_NOTES_DIR` environment variable overrides it.
 
 If no file exists, press `n` to create `.herdr/context.md` from a template. The sidebar adds `.herdr/` to the repo's `.git/info/exclude` so the file stays private. Remove that line if you want to commit the file and share it with your team.
 
@@ -92,7 +92,7 @@ If no file exists, press `n` to create `.herdr/context.md` from a template. The 
 ## Tips
 
 - Ask your agents to keep the file current, for example in `AGENTS.md`: "Record decisions and task progress in `.herdr/context.md`."
-- `herdr-context render FILE [WIDTH]` prints the rendered file as plain text, which is handy for checking layout.
+- `wherewasi render FILE [WIDTH]` prints the rendered file as plain text, which is handy for checking layout.
 
 ## Development
 
