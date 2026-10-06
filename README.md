@@ -20,7 +20,7 @@
 
  ▸ Decisions (3)
 ─────────────────────────────────────────────────────
- .herdr/context.md · 2m ago             e edit  ? keys
+ .herdr/wherewasi.md · 2m ago           e edit  ? keys
 ```
 
 ## Features
@@ -57,8 +57,8 @@ Then run `herdr server reload-config`. Without a binding, use `herdr plugin acti
 
 For the focused pane's directory, the first file that exists wins:
 
-1. `<repo>/.herdr/context.md`
-2. `<repo>/CONTEXT.md`
+1. `<repo>/.herdr/wherewasi.md` (private by default)
+2. `<repo>/WHEREWASI.md` (commit this one to share it with your team)
 3. `<notes_dir>/<repo>.md`, if you configure a notes folder (see below)
 
 The repo name comes from the `origin` remote, so Herdr's generated worktree names do not change it.
@@ -71,7 +71,7 @@ notes_dir = "~/notes"
 
 The `WHEREWASI_NOTES_DIR` environment variable overrides it.
 
-If no file exists, press `n` to create `.herdr/context.md` from a template. The sidebar adds `.herdr/` to the repo's `.git/info/exclude` so the file stays private. Remove that line if you want to commit the file and share it with your team.
+If no file exists, press `n` to create `.herdr/wherewasi.md` from a template. The sidebar adds `.herdr/` to the repo's `.git/info/exclude` so the file stays private. Remove that line if you want to commit the file and share it with your team.
 
 ## Keys
 
@@ -84,14 +84,14 @@ If no file exists, press `n` to create `.herdr/context.md` from a template. The 
 | `z` / `tab` | fold section |
 | `Z` | fold / unfold all |
 | `e` | edit in `$EDITOR` (Herdr popup) |
-| `n` | create context file |
+| `n` | create wherewasi file |
 | `r` | reload |
 | `?` | help |
 | `q` | close sidebar |
 
 ## Tips
 
-- Ask your agents to keep the file current, for example in `AGENTS.md`: "Record decisions and task progress in `.herdr/context.md`."
+- Ask your agents to keep the file current, for example in `AGENTS.md`: "Record decisions and task progress in `.herdr/wherewasi.md`."
 - `wherewasi render FILE [WIDTH]` prints the rendered file as plain text, which is handy for checking layout.
 
 ## Development

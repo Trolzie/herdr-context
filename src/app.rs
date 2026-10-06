@@ -1,4 +1,4 @@
-//! The sidebar: follows the focused pane, renders its context file, and
+//! The sidebar: follows the focused pane, renders its wherewasi file, and
 //! handles keys.
 
 use std::collections::{HashMap, HashSet};
@@ -278,7 +278,7 @@ impl App {
         self.flash(if excluded {
             "created · .herdr/ kept private via .git/info/exclude".to_owned()
         } else {
-            "created .herdr/context.md".to_owned()
+            "created .herdr/wherewasi.md".to_owned()
         });
     }
 
@@ -533,7 +533,7 @@ impl App {
                     left.push(Span::styled(format!(" · {branch}"), theme::dim()));
                 }
             }
-            None => left.push(Span::styled("context", theme::dim())),
+            None => left.push(Span::styled("wherewasi", theme::dim())),
         }
 
         let mut right = Vec::new();
@@ -641,18 +641,18 @@ impl App {
             .add_modifier(Modifier::BOLD);
         let lines = vec![
             Line::from(vec![
-                Span::styled("no context for ", theme::dim()),
+                Span::styled("no notes yet for ", theme::dim()),
                 Span::styled(repo, Style::new().fg(theme::CRYSTAL_BLUE)),
             ]),
             Line::default(),
             Line::from(vec![
                 Span::styled("n", key),
-                // Padded to the next line's width so the centred keys line up.
-                Span::styled("  create .herdr/context.md ", theme::dim()),
+                Span::styled("  create .herdr/wherewasi.md", theme::dim()),
             ]),
             Line::from(vec![
                 Span::styled("e", key),
-                Span::styled("  create and open in editor", theme::dim()),
+                // Padded to the line above so the centred keys line up.
+                Span::styled("  create and open in editor ", theme::dim()),
             ]),
         ];
         let top = area.height.saturating_sub(lines.len() as u16) / 3;
@@ -674,7 +674,7 @@ fn draw_help(frame: &mut Frame, area: Rect) {
         ("z / tab", "fold section"),
         ("Z", "fold / unfold all"),
         ("e", "edit in $EDITOR"),
-        ("n", "create context file"),
+        ("n", "create wherewasi file"),
         ("r", "reload"),
         ("q", "close sidebar"),
     ];

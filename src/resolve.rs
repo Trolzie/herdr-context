@@ -1,4 +1,4 @@
-//! Map a working directory to the context file that belongs to it.
+//! Map a working directory to the wherewasi file that belongs to it.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -23,7 +23,7 @@ impl Target {
             .unwrap_or_else(|| cwd.to_path_buf());
         let repo = repo_name(&root);
         let branch = git(&root, &["branch", "--show-current"]).filter(|b| !b.is_empty());
-        let default_file = root.join(".herdr").join("context.md");
+        let default_file = root.join(".herdr").join("wherewasi.md");
         let mut target = Self {
             root,
             repo,
@@ -37,7 +37,7 @@ impl Target {
 
     /// Re-check candidates so files created outside the sidebar are picked up.
     pub fn find_file(&self) -> Option<PathBuf> {
-        let mut candidates = vec![self.default_file.clone(), self.root.join("CONTEXT.md")];
+        let mut candidates = vec![self.default_file.clone(), self.root.join("WHEREWASI.md")];
         if let Some(dir) = notes_dir() {
             candidates.push(dir.join(format!("{}.md", self.repo)));
         }

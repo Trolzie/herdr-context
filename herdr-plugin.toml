@@ -22,7 +22,7 @@ command = ["target/release/wherewasi", "view"]
 
 [[panes]]
 id = "editor"
-title = "edit context file"
+title = "edit wherewasi"
 placement = "popup"
 width = "90%"
 height = "90%"

@@ -147,7 +147,7 @@ fn rightmost_pane(pane_id: &str) -> Option<String> {
         .and_then(|p| p["pane_id"].as_str().map(str::to_owned))
 }
 
-/// Popup entrypoint: open the context file in the user's editor.
+/// Popup entrypoint: open the wherewasi file in the user's editor.
 fn edit() -> Result<()> {
     let file = std::env::var_os("WHEREWASI_FILE").context("WHEREWASI_FILE is not set")?;
     let status = app::editor_command(&PathBuf::from(file)).status()?;
