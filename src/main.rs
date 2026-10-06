@@ -1,10 +1,14 @@
 mod app;
+mod edit;
 mod herdr;
+mod hook;
 mod layout;
 mod markdown;
 mod resolve;
+mod setup;
 mod state;
 mod theme;
+mod update;
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -13,21 +17,109 @@ use anyhow::{Context, Result, bail};
 use serde_json::{Value, json};
 
 const PLUGIN_ID: &str = "trolz.wherewasi";
-const USAGE: &str = "usage: wherewasi <view | toggle | edit | render FILE [WIDTH]>";
+const USAGE: &str = "\
+wherewasi: keep a live \"where was I?\" file for the repo you are in
+
+Agent commands (run inside the repo):
+  wherewasi now TEXT       set what is happening right now
+  wherewasi did TEXT       log something just finished (newest first)
+  wherewasi todo TEXT      add an open task
+  wherewasi check TEXT     tick the first open task containing TEXT
+  wherewasi decide TEXT    record a decision
+  wherewasi note TEXT      add a note
+  wherewasi show           print the file
+  wherewasi path           print the file's path
+
+Setup:
+  wherewasi setup [--remove] install or remove the agent hooks (runs automatically)
+
+Plugin commands:
+  wherewasi view | toggle | edit | render FILE [WIDTH] | hook AGENT EVENT";
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
-        Some("view") | None => view(),
+        Some("view") => view(),
+        Some(command @ ("now" | "did" | "todo" | "check" | "decide" | "note")) => {
+            update(command, &args[1..].join(" "))
+        }
+        Some("show") => show(),
+        Some("setup") => setup::run(&args[1..]),
+        Some("hook") => match args.get(1..4) {
+            // pi: `hook pi EVENT SESSION CWD`
+            Some([agent, event, session]) if agent == "pi" => {
+                let cwd = args
+                    .get(4)
+                    .map_or_else(|| PathBuf::from("."), PathBuf::from);
+                hook::run_plain(event, session, &cwd);
+                Ok(())
+            }
+            _ => match args.get(1..3) {
+                Some([agent, event]) => hook::run(agent, event),
+                _ => bail!("usage: wherewasi hook AGENT EVENT"),
+            },
+        },
+        Some("path") => {
+            println!("{}", here().file_or_default().display());
+            Ok(())
+        }
         Some("toggle") => toggle(),
         Some("edit") => edit(),
         Some("render") => render(&args[1..]),
-        Some("-h" | "--help" | "help") => {
+        None | Some("-h" | "--help" | "help") => {
             println!("{USAGE}");
             Ok(())
         }
         Some(other) => bail!("unknown command `{other}`\n{USAGE}"),
     }
+}
+
+/// The target for the directory the command runs in.
+fn here() -> resolve::Target {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    resolve::Target::resolve(&cwd)
+}
+
+/// Agent command: apply one section edit, creating the file if needed.
+fn update(command: &str, text: &str) -> Result<()> {
+    let text = text.trim();
+    if text.is_empty() {
+        bail!("usage: wherewasi {command} TEXT");
+    }
+    let mut target = here();
+    let path = target.file_or_create().context("create wherewasi file")?;
+    let mut file = edit::File::parse(&std::fs::read_to_string(&path)?);
+    match command {
+        "now" => file.now(text),
+        "did" => file.did(text),
+        "todo" => file.todo(text),
+        "decide" => file.decide(text),
+        "note" => file.note(text),
+        "check" => match file.check(text) {
+            Ok(task) => println!("checked: {task}"),
+            Err(open) if open.is_empty() => bail!("no open tasks"),
+            Err(open) => bail!(
+                "no open task matches `{text}`; open tasks:\n- {}",
+                open.join("\n- ")
+            ),
+        },
+        _ => unreachable!(),
+    }
+    resolve::write_atomically(&path, &file.render())?;
+    Ok(())
+}
+
+fn show() -> Result<()> {
+    let target = here();
+    match &target.file {
+        Some(path) => print!("{}", std::fs::read_to_string(path)?),
+        None => println!(
+            "No wherewasi file for {} yet. `wherewasi now TEXT` creates {}.",
+            target.repo,
+            target.default_file.display()
+        ),
+    }
+    Ok(())
 }
 
 fn view() -> Result<()> {

@@ -95,6 +95,7 @@ impl Doc {
         while lines.last().is_some_and(|l| l.kind == Kind::Blank) {
             lines.pop();
         }
+        drop_title(&mut lines);
         pin_now_section(&mut lines);
         let sections = index_sections(&lines);
         Self { lines, sections }
@@ -108,6 +109,19 @@ impl Doc {
             .filter(|(_, s)| s.line <= line && line < s.end)
             .max_by_key(|(_, s)| s.line)
             .map(|(i, _)| i)
+    }
+}
+
+/// A leading `# title` repeats the sidebar header, so hide it.
+fn drop_title(lines: &mut Vec<DocLine>) {
+    if matches!(
+        lines.first().map(|l| &l.kind),
+        Some(Kind::Heading { level: 1, .. })
+    ) {
+        lines.remove(0);
+        while lines.first().is_some_and(|l| l.kind == Kind::Blank) {
+            lines.remove(0);
+        }
     }
 }
 
@@ -347,6 +361,9 @@ impl<'a> Builder<'a> {
             Event::InlineMath(math) | Event::DisplayMath(math) => {
                 self.push_text(&math, theme::inline_code());
             }
+            // Comments (like the plan markers) are invisible in Markdown.
+            Event::Html(html) | Event::InlineHtml(html)
+                if html.trim_start().starts_with("<!--") => {}
             Event::Html(html) | Event::InlineHtml(html) => {
                 let html = html.trim_end_matches('\n').to_owned();
                 self.push_text(&html, theme::dim());
@@ -637,8 +654,14 @@ mod tests {
     }
 
     #[test]
+    fn leading_title_is_hidden() {
+        let doc = Doc::parse("# repo\n\n## Goal\n\nship\n");
+        assert!(matches!(&doc.lines[0].kind, Kind::Heading { title, .. } if title == "Goal"));
+    }
+
+    #[test]
     fn nested_sections_end_at_same_or_higher_level() {
-        let doc = Doc::parse("# A\n## B\ntext\n## C\nmore\n# D\n");
+        let doc = Doc::parse("intro\n\n# A\n## B\ntext\n## C\nmore\n# D\n");
         let a = &doc.sections[0];
         let d = &doc.sections[3];
         assert_eq!(a.end, d.line);

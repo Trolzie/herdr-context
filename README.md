@@ -33,6 +33,29 @@
 - Reloads live when the file changes, including edits made by agents.
 - The header shows repo, branch and the focused pane's agent status, plus the active herdr-ledger run when that tool is installed.
 
+## Agents keep it current
+
+You don't have to write the file yourself. The plugin briefs your coding agents and has them log their work as they go, so the sidebar fills itself in:
+
+- **Session start:** the agent gets the current file and a short protocol (see [`agents/protocol.md`](agents/protocol.md)), so it knows the plan before it starts.
+- **While working:** the agent records progress with one-line commands:
+
+  ```bash
+  wherewasi now "Fixing the login redirect loop"
+  wherewasi did "Allow-listed redirect paths"
+  wherewasi todo "Add a regression test"
+  wherewasi check "regression test"
+  wherewasi decide "Allow-list paths instead of stripping next"
+  ```
+
+- **Its own plan, mirrored:** when the agent plans with its built-in tools, that plan appears in `## Plan` automatically. This covers Claude Code's approved plans and task list, and Codex's `update_plan`. The step in progress becomes `## Now`, and finished steps are logged. Agents without a checklist tool (newer Claude models, pi) are asked to write their steps with `wherewasi todo` instead.
+- **Commits, logged for free:** commits made during a turn are logged by their subject line.
+- **End of a turn:** if the agent changed the repo but nothing was logged, it is asked once to add a line before it finishes.
+
+The hooks only act inside Herdr panes, and the file stays yours to edit: press `e`, or edit it however you like. Agents are told to build on your wording.
+
+Supported agents: Claude Code (hooks + skill), Codex (hooks) and pi (extension).
+
 ## Install
 
 Requires Herdr 0.9.3 or newer and a Rust toolchain (`cargo`).
@@ -53,6 +76,32 @@ description = "toggle wherewasi sidebar"
 
 Then run `herdr server reload-config`. Without a binding, use `herdr plugin action invoke trolz.wherewasi.toggle`.
 
+### What install sets up
+
+Installing runs `wherewasi setup`, and Herdr runs it again on every start so paths stay current after updates. It only touches agents whose config folder exists, and only adds its own entries:
+
+| Where | What |
+| --- | --- |
+| `~/.local/bin/wherewasi` | symlink to the plugin binary, so agents can run `wherewasi` |
+| `~/.claude/settings.json` | `SessionStart`, `UserPromptSubmit`, `Stop`, `PostToolUse` (plan mode), `TaskCreated` and `TaskCompleted` hooks |
+| `~/.claude/skills/wherewasi/` | a skill describing the commands |
+| `~/.codex/hooks.json` | `SessionStart`, `UserPromptSubmit`, `Stop` and `PostToolUse` (`update_plan`) hooks |
+| `~/.pi/agent/extensions/wherewasi.ts` | a pi extension doing the same |
+
+Codex asks you to approve new hooks once: open Codex, run `/hooks` and trust the wherewasi hooks. Until then Codex skips them. The hook commands point at `~/.local/bin/wherewasi`, so they stay approved across plugin updates.
+
+To turn this off, add `auto_setup = false` to the plugin's `config.toml` (see below) and run `wherewasi setup --remove`, which removes exactly what it added.
+
+## Updating
+
+Once a day the sidebar checks GitHub for a newer release and, if there is one, shows `↑ vX.Y.Z` in its footer. It never updates itself. To update:
+
+```bash
+herdr plugin install Trolzie/herdr-wherewasi --yes
+```
+
+The agent hooks are refreshed automatically the next time Herdr starts.
+
 ## Which file is shown
 
 For the focused pane's directory, the first file that exists wins:
@@ -67,6 +116,8 @@ To keep notes outside your repos, set a notes folder in the plugin's config file
 
 ```toml
 notes_dir = "~/notes"
+# auto_setup = false     # don't install agent hooks
+# update_check = false   # don't check GitHub for new releases
 ```
 
 The `WHEREWASI_NOTES_DIR` environment variable overrides it.
@@ -91,7 +142,6 @@ If no file exists, press `n` to create `.herdr/wherewasi.md` from a template. Th
 
 ## Tips
 
-- Ask your agents to keep the file current, for example in `AGENTS.md`: "Record decisions and task progress in `.herdr/wherewasi.md`."
 - `wherewasi render FILE [WIDTH]` prints the rendered file as plain text, which is handy for checking layout.
 
 ## Development

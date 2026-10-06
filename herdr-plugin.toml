@@ -1,12 +1,22 @@
 id = "trolz.wherewasi"
 name = "Where was I"
-version = "0.1.0"
+version = "0.2.0"
 min_herdr_version = "0.9.3"
 description = "Keeps your plan, progress and what just happened in view beside your agents, so switching context is instant"
 platforms = ["linux", "macos"]
 
 [[build]]
 command = ["cargo", "build", "--release"]
+
+# Install the agent hooks (Claude Code, Codex, pi) so agents keep the file
+# current. `auto_setup = false` in the plugin config turns this off;
+# `wherewasi setup --remove` undoes it.
+[[build]]
+command = ["target/release/wherewasi", "setup", "--quiet"]
+
+# Re-sync on every herdr start, so hook paths stay current after updates.
+[[startup]]
+command = ["target/release/wherewasi", "setup", "--quiet"]
 
 [[actions]]
 id = "toggle"

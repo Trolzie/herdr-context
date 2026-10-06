@@ -21,7 +21,7 @@ use unicode_width::UnicodeWidthStr;
 use crate::herdr::{self, FocusEvent, PaneInfo};
 use crate::layout::{self, Row};
 use crate::markdown::{self, Doc, Kind};
-use crate::resolve::{self, Target};
+use crate::resolve::Target;
 use crate::{state, theme};
 
 const SWITCH_FLASH: Duration = Duration::from_millis(700);
@@ -41,6 +41,8 @@ pub struct App {
     scroll: usize,
     switched_at: Option<Instant>,
     ledger: Option<String>,
+    /// Newer release available, from the daily update check.
+    update: Option<String>,
     help: bool,
     message: Option<(String, Instant)>,
     body_height: usize,
@@ -69,6 +71,7 @@ impl App {
             scroll: 0,
             switched_at: None,
             ledger: None,
+            update: None,
             help: false,
             message: None,
             body_height: 0,
@@ -82,6 +85,10 @@ impl App {
         }
         let (tx, rx) = channel();
         herdr::subscribe_focus(tx);
+        let (update_tx, update_rx) = channel();
+        std::thread::spawn(move || {
+            let _ = update_tx.send(crate::update::newer_version());
+        });
 
         // Start from the pane that was focused when the sidebar opened, or
         // fall back to the directory the sidebar was launched in.
@@ -92,7 +99,7 @@ impl App {
             self.switch_to(&cwd);
         }
 
-        let result = self.event_loop(terminal, &rx);
+        let result = self.event_loop(terminal, &rx, &update_rx);
         if let Some(tab) = &self.own_tab {
             state::forget(tab);
         }
@@ -103,12 +110,16 @@ impl App {
         &mut self,
         terminal: &mut DefaultTerminal,
         rx: &Receiver<FocusEvent>,
+        update_rx: &Receiver<Option<String>>,
     ) -> Result<()> {
         let mut last_file_check = Instant::now();
         let mut last_status = Instant::now();
         let mut last_ledger = Instant::now();
         while !self.quit {
             terminal.draw(|frame| self.draw(frame))?;
+            if let Ok(update) = update_rx.try_recv() {
+                self.update = update;
+            }
 
             if event::poll(Duration::from_millis(200))? {
                 match event::read()? {
@@ -242,6 +253,7 @@ impl App {
         let mtime = target.file.as_deref().and_then(modified);
         if mtime != self.mtime {
             self.load();
+            self.flash("● updated");
         }
     }
 
@@ -249,7 +261,7 @@ impl App {
         let Some(path) = self.target.as_ref().and_then(|t| t.file.clone()) else {
             return;
         };
-        match std::fs::write(&path, source) {
+        match crate::resolve::write_atomically(&path, source) {
             Ok(()) => self.load(),
             Err(err) => self.flash(format!("write failed: {err}")),
         }
@@ -259,27 +271,20 @@ impl App {
         let Some(target) = &mut self.target else {
             return;
         };
-        let template = resolve::template(&target.repo);
         if target.file.is_some() {
             return;
         }
-        let path = target.default_file.clone();
-        let created = path
-            .parent()
-            .map_or(Ok(()), std::fs::create_dir_all)
-            .and_then(|()| std::fs::write(&path, template));
-        if let Err(err) = created {
-            self.flash(format!("create failed: {err}"));
-            return;
+        match target.create() {
+            Ok(excluded) => {
+                self.load();
+                self.flash(if excluded {
+                    "created · .herdr/ kept private via .git/info/exclude"
+                } else {
+                    "created .herdr/wherewasi.md"
+                });
+            }
+            Err(err) => self.flash(format!("create failed: {err}")),
         }
-        target.file = Some(path);
-        let excluded = exclude_herdr_dir(&target.root);
-        self.load();
-        self.flash(if excluded {
-            "created · .herdr/ kept private via .git/info/exclude".to_owned()
-        } else {
-            "created .herdr/wherewasi.md".to_owned()
-        });
     }
 
     fn refresh_ledger(&mut self) {
@@ -577,7 +582,14 @@ impl App {
             }
         };
         let key = Style::new().fg(theme::OLD_WHITE);
-        let right = if width >= 34 {
+        let mut right = Vec::new();
+        if let Some(version) = &self.update
+            && width >= 46
+        {
+            let hint = format!("↑ v{version}  ");
+            right.push(Span::styled(hint, Style::new().fg(theme::CARP_YELLOW)));
+        }
+        right.extend(if width >= 34 {
             vec![
                 Span::styled("e", key),
                 Span::styled(" edit  ", theme::dim()),
@@ -586,7 +598,7 @@ impl App {
             ]
         } else {
             vec![Span::styled("?", key), Span::raw(" ")]
-        };
+        });
         justify(left, right, width)
     }
 
@@ -782,40 +794,6 @@ fn ledger_line(root: &Path) -> Option<String> {
         parts.push(duration(ms));
     }
     Some(parts.join(" · "))
-}
-
-/// Keep `.herdr/` out of Git without touching the shared `.gitignore`.
-fn exclude_herdr_dir(root: &Path) -> bool {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args([
-            "rev-parse",
-            "--path-format=absolute",
-            "--git-path",
-            "info/exclude",
-        ])
-        .output();
-    let Ok(output) = output else { return false };
-    if !output.status.success() {
-        return false;
-    }
-    let path = PathBuf::from(String::from_utf8_lossy(&output.stdout).trim());
-    let existing = std::fs::read_to_string(&path).unwrap_or_default();
-    if existing
-        .lines()
-        .any(|l| l.trim() == ".herdr/" || l.trim() == ".herdr")
-    {
-        return true;
-    }
-    let mut contents = existing;
-    if !contents.is_empty() && !contents.ends_with('\n') {
-        contents.push('\n');
-    }
-    contents.push_str(".herdr/\n");
-    path.parent()
-        .is_some_and(|dir| std::fs::create_dir_all(dir).is_ok())
-        && std::fs::write(&path, contents).is_ok()
 }
 
 /// `$EDITOR` may carry arguments (`code -w`), so run it through the shell.
