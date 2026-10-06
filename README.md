@@ -31,7 +31,7 @@ A [Herdr](https://herdr.dev) plugin that docks a live, rendered Markdown file on
 - Shows task progress per section and lets you fold sections.
 - `space` ticks a checkbox and writes `[x]` back to the file.
 - Reloads live when the file changes, including edits made by agents.
-- The header shows repo, branch and the focused pane's agent status, plus the active [herdr-ledger](https://github.com/Trolzie/herdr-ledger) run when there is one.
+- The header shows repo, branch and the focused pane's agent status, plus the active herdr-ledger run when that tool is installed.
 
 ## Install
 
@@ -59,9 +59,17 @@ For the focused pane's directory, the first file that exists wins:
 
 1. `<repo>/.herdr/context.md`
 2. `<repo>/CONTEXT.md`
-3. `~/projects/notes/<repo>.md` (set `HERDR_CONTEXT_NOTES_DIR` to use another folder)
+3. `<notes_dir>/<repo>.md`, if you configure a notes folder (see below)
 
 The repo name comes from the `origin` remote, so Herdr's generated worktree names do not change it.
+
+To keep notes outside your repos, set a notes folder in the plugin's config file. `herdr plugin config-dir trolz.context` prints its folder; create `config.toml` there:
+
+```toml
+notes_dir = "~/notes"
+```
+
+The `HERDR_CONTEXT_NOTES_DIR` environment variable overrides it.
 
 If no file exists, press `n` to create `.herdr/context.md` from a template. The sidebar adds `.herdr/` to the repo's `.git/info/exclude` so the file stays private. Remove that line if you want to commit the file and share it with your team.
 

@@ -45,11 +45,31 @@ impl Target {
     }
 }
 
+/// Optional folder of per-repo notes: `HERDR_CONTEXT_NOTES_DIR`, or
+/// `notes_dir = "..."` in the plugin's `config.toml`.
 fn notes_dir() -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os("HERDR_CONTEXT_NOTES_DIR") {
         return Some(PathBuf::from(dir));
     }
-    std::env::var_os("HOME").map(|home| PathBuf::from(home).join("projects/notes"))
+    let config = std::env::var_os("HERDR_PLUGIN_CONFIG_DIR")?;
+    let text = std::fs::read_to_string(PathBuf::from(config).join("config.toml")).ok()?;
+    let value = config_value(&text, "notes_dir")?;
+    Some(expand_home(&value))
+}
+
+/// Read a `key = "value"` line; enough for this plugin's single setting.
+fn config_value(text: &str, key: &str) -> Option<String> {
+    text.lines().find_map(|line| {
+        let (name, value) = line.split_once('=')?;
+        (name.trim() == key).then(|| value.trim().trim_matches('"').to_owned())
+    })
+}
+
+fn expand_home(path: &str) -> PathBuf {
+    match (path.strip_prefix("~/"), std::env::var_os("HOME")) {
+        (Some(rest), Some(home)) => PathBuf::from(home).join(rest),
+        _ => PathBuf::from(path),
+    }
 }
 
 fn git(dir: &Path, args: &[&str]) -> Option<String> {
@@ -93,4 +113,16 @@ pub fn template(repo: &str) -> String {
     format!(
         "# {repo}\n\n## Now\n\nWhat you are doing right now.\n\n## Goal\n\n## Tasks\n\n- [ ] first task\n\n## Decisions\n\n## Notes\n"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_notes_dir_setting() {
+        let text = "# comment\nnotes_dir = \"~/notes\"\n";
+        assert_eq!(config_value(text, "notes_dir").as_deref(), Some("~/notes"));
+        assert_eq!(config_value(text, "other"), None);
+    }
 }
