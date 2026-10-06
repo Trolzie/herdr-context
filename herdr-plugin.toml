@@ -1,0 +1,29 @@
+id = "trolz.context"
+name = "Context sidebar"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+description = "A live, rendered Markdown context file for the repo you are working in, docked on the right"
+platforms = ["linux", "macos"]
+
+[[build]]
+command = ["cargo", "build", "--release"]
+
+[[actions]]
+id = "toggle"
+title = "Toggle context sidebar"
+contexts = ["workspace"]
+command = ["target/release/herdr-context", "toggle"]
+
+[[panes]]
+id = "sidebar"
+title = "context"
+placement = "split"
+command = ["target/release/herdr-context", "view"]
+
+[[panes]]
+id = "editor"
+title = "edit context"
+placement = "popup"
+width = "90%"
+height = "90%"
+command = ["target/release/herdr-context", "edit"]
