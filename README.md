@@ -8,9 +8,6 @@
  ▌NOW
    Fix redirect loop after SSO callback
 
- ▾ Goal
-   Users land on /dashboard after login.
-
  ▾ Tasks                               3/5 ━━━──
    ✔ reproduce locally
    ✔ find where next is set
@@ -46,9 +43,10 @@ You don't have to write the file yourself. The plugin briefs your coding agents 
   wherewasi todo "Add a regression test"
   wherewasi check "regression test"
   wherewasi decide "Allow-list paths instead of stripping next"
+  wherewasi note "Redirect logic lives in auth/callback.ts"
   ```
 
-- **Its own plan, mirrored:** when the agent plans with its built-in tools, that plan appears in `## Plan` automatically. This covers Claude Code's approved plans and task list, and Codex's `update_plan`. The step in progress becomes `## Now`, and finished steps are logged. Agents without a checklist tool (newer Claude models, pi) are asked to write their steps with `wherewasi todo` instead.
+- **Its own plan, mirrored:** when the agent plans with its built-in tools, that plan appears in `## Plan` automatically, headed by the plan's title. This covers Claude Code's approved plans and task list, and Codex's `update_plan`. The step in progress becomes `## Now`, and finished steps are logged. Agents without a checklist tool (newer Claude models, pi) are asked to write their steps with `wherewasi todo` instead.
 - **Commits, logged for free:** commits made during a turn are logged by their subject line.
 - **End of a turn:** if the agent changed the repo but nothing was logged, it is asked once to add a line before it finishes.
 

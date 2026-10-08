@@ -38,7 +38,7 @@ pub fn briefing(cwd: &Path) -> Option<String> {
             )
         }
         None => format!(
-            "There is no wherewasi file for {} yet; your first `wherewasi now` creates it.",
+            "There is no wherewasi file for {} yet; your first `wherewasi` command creates it.",
             target.repo
         ),
     };

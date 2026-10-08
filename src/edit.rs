@@ -11,7 +11,9 @@ use crate::resolve::Target;
 /// Most recent log entries kept; older ones are dropped.
 const LOG_LIMIT: usize = 40;
 
-/// Where each section goes if it is missing, by template order.
+/// Where each section goes if it is missing, by template order. `Goal` is
+/// not in the template; it is kept here so a hand-written one sorts above
+/// the plan.
 const ORDER: [&str; 7] = ["Now", "Goal", "Plan", "Tasks", "Log", "Decisions", "Notes"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -124,16 +126,16 @@ impl File {
         self.lines.iter().any(|l| l.contains(text))
     }
 
-    /// Tick the first open task containing `query` (case-insensitive).
+    /// Tick the first open task containing `query` (case-insensitive),
+    /// looking in `## Tasks` first and then in the mirrored plan, so an
+    /// agent without a task tool can finish the steps of an approved plan.
     /// Returns the task text, or the open tasks when nothing matched.
     pub fn check(&mut self, query: &str) -> Result<String, Vec<String>> {
         let query = query.to_lowercase();
-        let Some((start, end)) = self.find("Tasks") else {
-            return Err(Vec::new());
-        };
-        let open: Vec<usize> = self
-            .items(start, end)
-            .into_iter()
+        let open: Vec<usize> = ["Tasks", "Plan"]
+            .iter()
+            .filter_map(|section| self.find(section))
+            .flat_map(|(start, end)| self.items(start, end))
             .filter(|i| is_open(&self.lines[*i]))
             .collect();
         let Some(&hit) = open
@@ -142,8 +144,17 @@ impl File {
         else {
             return Err(open.iter().map(|i| item_text(&self.lines[*i])).collect());
         };
-        self.lines[hit] = self.lines[hit].replacen("- [ ]", "- [x]", 1);
-        Ok(item_text(&self.lines[hit]))
+        let text = item_text(&self.lines[hit]);
+        let in_plan = self
+            .find("Plan")
+            .is_some_and(|(start, end)| (start..end).contains(&hit));
+        // A plan step may be bold (in progress); write it like `plan_complete`.
+        self.lines[hit] = if in_plan {
+            format!("- [x] {text}")
+        } else {
+            self.lines[hit].replacen("- [ ]", "- [x]", 1)
+        };
+        Ok(text)
     }
 
     /// Mirror an agent's own plan into `## Plan` (between markers), mark
@@ -164,7 +175,8 @@ impl File {
             return;
         }
         let before = self.plan_done();
-        self.replace_plan_block(items);
+        let title = self.plan_block_title();
+        self.replace_plan_block(title, items);
         if let Some(step) = steps.iter().find(|s| s.status == Status::InProgress) {
             self.now(&step.text);
         }
@@ -176,24 +188,14 @@ impl File {
         }
     }
 
-    /// Record a freshly approved plan: title as the goal (unless one is
-    /// set), its steps as the mirrored plan.
+    /// Record a freshly approved plan: its title heads the mirrored plan,
+    /// its steps follow.
     pub fn approved_plan(&mut self, plan: &str) {
         let (title, steps) = plan_outline(plan);
-        if let Some(title) = &title
-            && self.body("Goal").is_empty()
-        {
-            let (start, end) = self.section("Goal");
-            self.insert_body(start, end, vec![title.clone()]);
+        let items: Vec<String> = steps.iter().map(|text| format!("- [ ] {text}")).collect();
+        if title.is_some() || !items.is_empty() {
+            self.replace_plan_block(title.clone(), items);
         }
-        let steps: Vec<Step> = steps
-            .into_iter()
-            .map(|text| Step {
-                text,
-                status: Status::Pending,
-            })
-            .collect();
-        self.set_plan(&steps);
         self.did(&format!(
             "plan approved: {}",
             title.as_deref().unwrap_or("new plan")
@@ -208,7 +210,8 @@ impl File {
         }
         let mut items = self.plan_block_items();
         items.push(format!("- [ ] {text}"));
-        self.replace_plan_block(items);
+        let title = self.plan_block_title();
+        self.replace_plan_block(title, items);
     }
 
     /// Tick a plan step (Claude `TaskCompleted`) and log it once.
@@ -220,7 +223,8 @@ impl File {
             None => {
                 let mut items = self.plan_block_items();
                 items.push(format!("- [x] {text}"));
-                self.replace_plan_block(items);
+                let title = self.plan_block_title();
+                self.replace_plan_block(title, items);
             }
         }
         self.did(&format!("done: {text}"));
@@ -267,11 +271,23 @@ impl File {
         }
     }
 
+    /// The plan's title: the bold line heading the mirrored block.
+    fn plan_block_title(&self) -> Option<String> {
+        let (open, close) = self.plan_block()?;
+        self.lines[open + 1..close]
+            .iter()
+            .find(|l| !l.trim().is_empty())
+            .filter(|l| !l.starts_with("- "))
+            .map(|l| l.trim().trim_matches('*').trim().to_owned())
+    }
+
+    /// The step lines of the mirrored block.
     fn plan_block_items(&self) -> Vec<String> {
         self.plan_block()
             .map(|(open, close)| {
                 self.lines[open + 1..close]
                     .iter()
+                    .filter(|l| l.starts_with("- ") || l.starts_with(char::is_whitespace))
                     .filter(|l| !l.trim().is_empty())
                     .cloned()
                     .collect()
@@ -279,8 +295,13 @@ impl File {
             .unwrap_or_default()
     }
 
-    fn replace_plan_block(&mut self, items: Vec<String>) {
+    /// Rewrite the mirrored block: an optional bold title, then the steps.
+    fn replace_plan_block(&mut self, title: Option<String>, items: Vec<String>) {
         let mut block = vec![PLAN_START.to_owned(), String::new()];
+        if let Some(title) = title.filter(|t| !t.is_empty()) {
+            block.push(format!("**{title}**"));
+            block.push(String::new());
+        }
         block.extend(items);
         block.extend([String::new(), PLAN_END.to_owned()]);
         match self.plan_block() {
@@ -366,21 +387,6 @@ impl File {
                     .collect()
             })
             .unwrap_or_default()
-    }
-
-    /// Body lines with surrounding blank lines trimmed (read-only).
-    fn body(&self, section: &str) -> Vec<String> {
-        let Some((start, end)) = self.find(section) else {
-            return Vec::new();
-        };
-        let mut body: Vec<String> = self.lines[start + 1..end].to_vec();
-        while body.first().is_some_and(|l| l.trim().is_empty()) {
-            body.remove(0);
-        }
-        while body.last().is_some_and(|l| l.trim().is_empty()) {
-            body.pop();
-        }
-        body
     }
 
     /// The section's range, creating the heading if it is missing.
@@ -569,7 +575,7 @@ mod tests {
         let mut file = File::parse(&template("demo"));
         file.now("Fixing the login redirect");
         let out = file.render();
-        assert!(out.contains("## Now\n\nFixing the login redirect\n\n## Goal"));
+        assert!(out.contains("## Now\n\nFixing the login redirect\n\n## Plan"));
         assert!(!out.contains("Nothing in progress"));
     }
 
@@ -596,6 +602,30 @@ mod tests {
         assert_eq!(file.check("SHIP").unwrap(), "ship it");
         assert!(file.render().contains("- [ ] write tests\n- [x] ship it\n"));
         assert_eq!(file.check("nope").unwrap_err(), vec!["write tests"]);
+    }
+
+    #[test]
+    fn check_falls_back_to_plan_steps() {
+        let mut file = File::parse(&template("demo"));
+        file.set_plan(&[
+            step("Patch next", Status::InProgress),
+            step("Test", Status::Pending),
+        ]);
+        file.todo("ask for review");
+        assert_eq!(
+            file.check("zzz").unwrap_err(),
+            vec!["ask for review", "Patch next", "Test"]
+        );
+        assert_eq!(file.check("patch").unwrap(), "Patch next");
+        assert!(
+            file.render().contains("- [x] Patch next\n- [ ] Test\n"),
+            "{}",
+            file.render()
+        );
+        // Tasks win over plan steps with the same words.
+        file.todo("Test the fallback");
+        assert_eq!(file.check("test").unwrap(), "Test the fallback");
+        assert!(file.render().contains("- [ ] Test\n"));
     }
 
     #[test]
@@ -661,8 +691,32 @@ mod tests {
         let mut file = File::parse(&template("demo"));
         file.approved_plan(numbered);
         let out = file.render();
-        assert!(out.contains("## Goal\n\nFix login\n"));
-        assert!(out.contains("- [ ] Reproduce it\n- [ ] Patch next\n"));
+        assert!(!out.contains("## Goal"), "{out}");
+        assert!(
+            out.contains(
+                "## Plan\n\n<!-- wherewasi:plan -->\n\n**Fix login**\n\n- [ ] Reproduce it\n- [ ] Patch next\n\n<!-- /wherewasi:plan -->\n"
+            ),
+            "{out}"
+        );
+        assert!(file.list("Log")[0].ends_with("plan approved: Fix login"));
+
+        // The title survives task edits and is replaced by the next plan.
+        file.plan_add("Add a test");
+        file.plan_complete("Reproduce it");
+        let out = file.render();
+        assert!(
+            out.contains(
+                "**Fix login**\n\n- [x] Reproduce it\n- [ ] Patch next\n- [ ] Add a test\n"
+            ),
+            "{out}"
+        );
+        file.approved_plan(mixed);
+        let out = file.render();
+        assert_eq!(out.matches("**Fix").count(), 1, "{out}");
+        assert!(
+            out.contains("**Fix flaky test**\n\n- [ ] Pin the seed\n- [ ] Retry once\n"),
+            "{out}"
+        );
     }
 
     #[test]

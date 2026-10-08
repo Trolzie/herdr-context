@@ -198,7 +198,7 @@ fn exclude_herdr_dir(root: &Path) -> bool {
 /// Starter file; kept markdownlint-clean so editors don't flag it.
 pub fn template(repo: &str) -> String {
     format!(
-        "# {repo}\n\n## Now\n\nNothing in progress yet.\n\n## Goal\n\n## Plan\n\n## Tasks\n\n## Log\n\n## Decisions\n\n## Notes\n"
+        "# {repo}\n\n## Now\n\nNothing in progress yet.\n\n## Plan\n\n## Tasks\n\n## Log\n\n## Decisions\n\n## Notes\n"
     )
 }
 

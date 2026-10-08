@@ -4,10 +4,11 @@ The user keeps a live "where was I?" overview of this repo in a herdr sidebar. I
 
 - `wherewasi now "TEXT"`: what you are working on right now. Set it when you start or change focus.
 - `wherewasi did "TEXT"`: log something you just finished. Newest entries go first.
-- `wherewasi todo "TEXT"` / `wherewasi check "TEXT"`: add an open task, or tick the first open task containing TEXT.
+- `wherewasi todo "TEXT"` / `wherewasi check "TEXT"`: add an open task, or tick the first open task (or plan step) containing TEXT.
 - `wherewasi decide "TEXT"`: record a decision and its reason.
+- `wherewasi note "TEXT"`: keep something worth knowing later that is neither a task nor a decision (a gotcha, a link, where a thing lives).
 - `wherewasi show`: print the whole file.
 
-For multi-step work, write your steps down with `wherewasi todo` before you start and `wherewasi check` them as you go; this is your written checklist. If you already keep a plan with a built-in tool (a task list, `update_plan`, plan mode), that plan is mirrored into `## Plan` automatically, and finished steps and commits are logged for you, so don't repeat them.
+For multi-step work, write your steps down with `wherewasi todo` before you start and `wherewasi check` them as you go; this is your written checklist. If you already keep a plan with a built-in tool (a task list, `update_plan`, plan mode), that plan is mirrored into `## Plan` automatically, and finished steps and commits are logged for you, so don't repeat them. If your plan steps appear under `## Plan` but nothing ticks them off for you, `wherewasi check` them as you finish each one.
 
 Write for the user, who reads it at a glance: one plain line per entry, past tense for `did`, no code, diffs or secrets. Log meaningful steps, not every edit. If the user edits the file by hand, their wording wins; build on it rather than rewriting it.

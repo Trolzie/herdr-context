@@ -24,7 +24,7 @@ Agent commands (run inside the repo):
   wherewasi now TEXT       set what is happening right now
   wherewasi did TEXT       log something just finished (newest first)
   wherewasi todo TEXT      add an open task
-  wherewasi check TEXT     tick the first open task containing TEXT
+  wherewasi check TEXT     tick the first open task (or plan step) containing TEXT
   wherewasi decide TEXT    record a decision
   wherewasi note TEXT      add a note
   wherewasi show           print the file
